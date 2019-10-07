@@ -76,9 +76,9 @@ namespace ContosoUniversity2.Controllers
         // GET: Students/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
-            if(id == null) return NotFound();
+            if (id == null) return NotFound();
 
-            var student = await _context.Students.FindAsync(id);
+            var student = await _context.Students.FirstOrDefaultAsync(m => m.ID == id);
 
             if (student == null) return NotFound();
 
@@ -88,43 +88,48 @@ namespace ContosoUniversity2.Controllers
         // POST: Students/Edit/5
         // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
         // more details see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
+        [HttpPost, ActionName("Edit")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("ID,LastName,FirstMidName,EnrollmentDate")] Student student)
-        {
-            if (id != student.ID) return NotFound();
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(student);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!StudentExists(student.ID))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            return View(student);
-        }
-
-        // GET: Students/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> EditPost(int? id)
         {
             if (id == null) return NotFound();
 
-            var student = await _context.Students.FirstOrDefaultAsync(m => m.ID == id);
+            var studentToUpdate = await _context.Students.FirstOrDefaultAsync(s => s.ID == id);
+            if (await TryUpdateModelAsync<Student>(studentToUpdate, "", s => s.FirstMidName, s => s.LastName, s => s.EnrollmentDate))
+            {
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (DbUpdateException /* ex */)
+                {
+                    //Log the error (uncomment ex variable name and write a log.)
+                    ModelState.AddModelError("", "Unable to save changes. " +
+                        "Try again, and if the problem persists, " +
+                        "see your system administrator.");
+                }
+            }
+            return View(studentToUpdate);
+        }
 
-            if (student == null)return NotFound();
+        // GET: Students/Delete/5
+        public async Task<IActionResult> Delete(int? id, bool? saveChangesError = false)
+        {
+            if (id == null) return NotFound();
+
+            var student = await _context.Students
+                                    .AsNoTracking()
+                                    .FirstOrDefaultAsync(m => m.ID == id);
+
+            if (student == null) return NotFound();
+
+            if (saveChangesError.GetValueOrDefault())
+            {
+                ViewData["ErrorMessage"] =
+                    "Delete failed. Try again, and if the problem persists " +
+                    "see your system administrator.";
+            }
 
             return View(student);
         }
@@ -135,10 +140,21 @@ namespace ContosoUniversity2.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var student = await _context.Students.FindAsync(id);
-            _context.Students.Remove(student);
-            await _context.SaveChangesAsync();
 
-            return RedirectToAction(nameof(Index));
+            if (student == null) return RedirectToAction(nameof(Index));
+
+            try
+            {
+                _context.Students.Remove(student);
+                await _context.SaveChangesAsync();
+
+                return RedirectToAction(nameof(Index));
+            }
+            catch (DbUpdateException/* ex */)
+            {
+                //Log the error (uncomment ex variable name and write a log.)
+                return RedirectToAction(nameof(Delete), new { id, saveChangesError = true }); //Redirects to the HttpGet Delete if the HttpPost Delete fails here.
+            }
         }
 
         private bool StudentExists(int id)
