@@ -16,6 +16,7 @@ namespace ContosoUniversity2.Data
         public DbSet<Instructor> Instructors { get; set; }
         public DbSet<OfficeAssignment> OfficeAssignments { get; set; }
         public DbSet<CourseAssignment> CourseAssignments { get; set; }
+        public DbSet<Person> People { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -26,6 +27,7 @@ namespace ContosoUniversity2.Data
             modelBuilder.Entity<Instructor>().ToTable("Instructor");
             modelBuilder.Entity<OfficeAssignment>().ToTable("OfficeAssignment");
             modelBuilder.Entity<CourseAssignment>().ToTable("CourseAssignment");
+            modelBuilder.Entity<Person>().ToTable("Person");
 
             //Fluent code configures the CourseAssignment entity's composite primary key.
             modelBuilder.Entity<CourseAssignment>().HasKey(c => new { c.CourseID, c.InstructorID }); 
